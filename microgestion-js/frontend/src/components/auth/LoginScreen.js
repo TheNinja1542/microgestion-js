@@ -1,40 +1,42 @@
+// Pantalla de login: correo/contraseña mediante el AuthContext (backend ASP.NET Core),
+// más la opción de entrar con reconocimiento facial proceso con el de FaceCapture.js
+
 import React from 'react';
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import FaceCapture from './FaceCapture';
 
+
 export default function LoginScreen({ onGoRegister }) {
-  
   const { login } = useAuth();
 
-  
+  // Lo que el usuario va escribiendo en el formulario.
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  
   const [error, setError] = useState('');
 
-
+  // true mientras se espera la respuesta del backend.
   const [loading, setLoading] = useState(false);
 
+  // true = se muestra la cámara para login facial.
   const [showFace, setShowFace] = useState(false);
 
-  
+  // Al enviar el formulario (botón "Entrar" o Enter).
   async function handleSubmit(e) {
-    e.preventDefault(); 
+    e.preventDefault(); // que no recargue la página
     setError('');
     setLoading(true);
-    
     const result = await login(email, password);
     setLoading(false);
     if (!result.success) setError(result.error || 'Error al iniciar sesión');
   }
 
- 
+  // desde aca es solo el tema de interfaz, no hay lógica de negocio.
   return React.createElement(
     'div',
     { className: 'min-h-screen bg-[#080d19] flex items-center justify-center p-4' },
-    
+    // Modal de cámara, si está activo.
     showFace &&
       React.createElement(FaceCapture, {
         mode: 'login',
@@ -44,7 +46,7 @@ export default function LoginScreen({ onGoRegister }) {
     React.createElement(
       'div',
       { className: 'w-full max-w-sm animate-fade-up' },
-      
+      // Logo y título
       React.createElement(
         'div',
         { className: 'mb-8 text-center' },
@@ -63,7 +65,7 @@ export default function LoginScreen({ onGoRegister }) {
         React.createElement('h1', { className: 'font-heading text-2xl font-bold text-white' }, 'MicroGestión'),
         React.createElement('p', { className: 'text-slate-400 text-sm mt-1' }, 'Sistema de gestión empresarial')
       ),
-      
+      // Tarjeta con el formulario
       React.createElement(
         'div',
         { className: 'bg-[#0f1629] border border-[#1e2d4a] rounded-2xl p-6' },
@@ -71,7 +73,7 @@ export default function LoginScreen({ onGoRegister }) {
         React.createElement(
           'form',
           { onSubmit: handleSubmit, className: 'space-y-4' },
-         
+          // Correo
           React.createElement(
             'div',
             null,
@@ -85,7 +87,7 @@ export default function LoginScreen({ onGoRegister }) {
                 'w-full px-3.5 py-2.5 bg-[#080d19] border border-[#1e2d4a] rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:border-[#3b7eff] transition-colors',
             })
           ),
-          
+          // Contraseña
           React.createElement(
             'div',
             null,
@@ -99,13 +101,14 @@ export default function LoginScreen({ onGoRegister }) {
                 'w-full px-3.5 py-2.5 bg-[#080d19] border border-[#1e2d4a] rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:border-[#3b7eff] transition-colors',
             })
           ),
+          // Mensaje de error
           error &&
             React.createElement(
               'p',
               { className: 'text-[#ef4444] text-xs bg-[#ef4444]/10 border border-[#ef4444]/20 rounded-lg px-3 py-2' },
               error
             ),
-          
+          // Botón enviar
           React.createElement(
             'button',
             {
@@ -117,14 +120,14 @@ export default function LoginScreen({ onGoRegister }) {
             loading ? 'Verificando...' : 'Entrar'
           )
         ),
-        
+        // Separador "o"
         React.createElement(
           'div',
           { className: 'relative my-4' },
           React.createElement('div', { className: 'absolute inset-0 flex items-center' }, React.createElement('div', { className: 'w-full border-t border-[#1e2d4a]' })),
           React.createElement('div', { className: 'relative flex justify-center' }, React.createElement('span', { className: 'bg-[#0f1629] px-3 text-xs text-slate-500' }, 'o'))
         ),
-        
+        // Login con rostro
         React.createElement(
           'button',
           {
@@ -145,7 +148,7 @@ export default function LoginScreen({ onGoRegister }) {
           'Iniciar con reconocimiento facial'
         )
       ),
-      
+      // Enlace a registro
       React.createElement(
         'p',
         { className: 'text-center text-slate-500 text-sm mt-5' },

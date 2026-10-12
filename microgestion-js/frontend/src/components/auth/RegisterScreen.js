@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import FaceCapture from './FaceCapture';
 
+// Roles disponibles al registrarse (tarjetas seleccionables).
 const roles = [
     { value: 'admin', label: 'Administrador', icon: '⚡', desc: 'Acceso completo al sistema' },
     { value: 'vendedor', label: 'Vendedor', icon: '🛒', desc: 'Gestión de ventas y clientes' },
@@ -11,27 +12,28 @@ const roles = [
 ];
 export default function RegisterScreen({ onGoLogin }) {
     const { register } = useAuth();
-    
+
+    // Campos del formulario.
     const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
 
     const [role, setRole] = useState('');
-
     const [error, setError] = useState('');
 
+    // Solo quedan 'form' y 'done'.
     const [step, setStep] = useState('form');
 
     const [showFace, setShowFace] = useState(false);
-    
-    const [registeredUserId, setRegisteredUserId] = useState(null);
-    
-    const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false);
-   
+
+    // true si un administrador debe aprobar la cuenta antes de poder entrar.
+    const [needsApproval, setNeedsApproval] = useState(false);
+
     const [loading, setLoading] = useState(false);
 
+    // Al enviar el formulario del paso 'form'.
     async function handleSubmit(e) {
         e.preventDefault();
         setError('');
-       
+        // Validaciones básicas
         if (!form.name || !form.email || !form.password || !role) {
             setError('Completa todos los campos');
             return;
@@ -44,30 +46,35 @@ export default function RegisterScreen({ onGoLogin }) {
             setError('La contraseña debe tener al menos 6 caracteres');
             return;
         }
+        // Si los datos son válidos, solo se abre la cámara primero.
+        setShowFace(true);
+    }
+
+    // Recibe el rostro capturado y crea la cuenta con el rostro incluido.
+    async function crearCuentaConRostro(descriptor) {
+        setShowFace(false);
         setLoading(true);
-        
+
+        // Ya no se revisa aquí si el rostro está repetido: el backend lo hace dentro
+        // del registro y responde con ese error si el rostro ya existe en otra cuenta.
+
         const result = await register({
             name: form.name,
             email: form.email,
             password: form.password,
-            role: role
+            role: role,
+            faceDescriptor: Array.from(descriptor),
         });
         setLoading(false);
         if (!result.success) {
             setError(result.error || 'Error al registrar');
             return;
         }
-        if (!result.user) {
-            setError('No se pudo obtener el usuario creado.');
-            return;
-        }
-      
-        setRegisteredUserId(result.user.id);
-        setNeedsEmailConfirmation(!!result.needsEmailConfirmation);
-        setStep('face');
+        setNeedsApproval(!!result.needsApproval);
+        setStep('done');
     }
 
-    
+    // Pantalla final: "¡Registro completado!"
     if (step === 'done') {
         return (React.createElement("div", { className: "min-h-screen bg-[#080d19] flex items-center justify-center p-4" },
             React.createElement("div", { className: "text-center animate-fade-up" },
@@ -75,21 +82,14 @@ export default function RegisterScreen({ onGoLogin }) {
                     React.createElement("svg", { className: "w-10 h-10 text-[#3b7eff]", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" },
                         React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M5 13l4 4L19 7" }))),
                 React.createElement("h2", { className: "font-heading text-2xl font-bold text-white mb-2" }, "\u00A1Registro completado!"),
-                React.createElement("p", { className: "text-slate-400 mb-6" }, needsEmailConfirmation
-                    ? "Tu cuenta fue creada. Revisa tu correo para confirmarla antes de iniciar sesión."
-                    : "Tu cuenta ha sido creada exitosamente y ya quedó guardada en la base de datos."),
+                React.createElement("p", { className: "text-slate-400 mb-6" }, needsApproval
+                    ? "Tu cuenta y tu rostro fueron guardados. Un administrador debe aprobar tu acceso antes de que puedas iniciar sesión."
+                    : "Tu cuenta y tu rostro fueron guardados exitosamente."),
                 React.createElement("button", { onClick: onGoLogin, className: "px-6 py-2.5 rounded-lg bg-[#3b7eff] text-white font-medium hover:bg-[#5a94ff] transition-colors" }, "Iniciar sesi\u00F3n"))));
     }
 
     return (React.createElement("div", { className: "min-h-screen bg-[#080d19] flex items-center justify-center p-4" },
-        
-        showFace && (React.createElement(FaceCapture, { mode: "register", userId: registeredUserId ?? undefined, onSuccess: () => {
-                setShowFace(false);
-                setStep('done');
-            }, onCancel: () => {
-                setShowFace(false);
-                setStep('done');
-            } })),
+        showFace && (React.createElement(FaceCapture, { mode: "register", onDescriptor: crearCuentaConRostro, onSuccess: () => setShowFace(false), onCancel: () => setShowFace(false) })),
         React.createElement("div", { className: "w-full max-w-lg animate-fade-up" },
             React.createElement("div", { className: "mb-8 text-center" },
                 React.createElement("div", { className: "inline-flex items-center gap-2 mb-4" },
@@ -122,20 +122,7 @@ export default function RegisterScreen({ onGoLogin }) {
                             React.createElement("div", { className: "text-xs font-medium text-white" }, r.label),
                             React.createElement("div", { className: "text-[10px] text-slate-500 leading-tight mt-0.5" }, r.desc)))))),
                     error && React.createElement("p", { className: "text-[#ef4444] text-xs bg-[#ef4444]/10 border border-[#ef4444]/20 rounded-lg px-3 py-2" }, error),
-                    React.createElement("button", { type: "submit", disabled: loading, className: "w-full py-3 rounded-lg bg-[#3b7eff] hover:bg-[#5a94ff] disabled:opacity-60 text-white font-medium transition-colors mt-2" }, loading ? 'Creando cuenta...' : 'Crear cuenta'))),
-                step === 'face' && (React.createElement("div", { className: "text-center py-4" },
-                    React.createElement("div", { className: "w-16 h-16 rounded-full bg-[#10b981]/20 flex items-center justify-center mx-auto mb-4" },
-                        React.createElement("svg", { className: "w-8 h-8 text-[#10b981]", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" },
-                            React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M5 13l4 4L19 7" }))),
-                    React.createElement("h3", { className: "font-heading text-lg font-semibold text-white mb-1" }, "\u00A1Cuenta creada!"),
-                    React.createElement("p", { className: "text-slate-400 text-sm mb-6" }, "\u00BFDeseas registrar tu rostro para acceso r\u00E1pido?"),
-                    React.createElement("div", { className: "flex flex-col gap-3" },
-                        React.createElement("button", { onClick: () => setShowFace(true), className: "w-full py-2.5 rounded-lg bg-[#3b7eff] hover:bg-[#5a94ff] text-white font-medium text-sm flex items-center justify-center gap-2 transition-colors" },
-                            React.createElement("svg", { className: "w-4 h-4", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" },
-                                React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" }),
-                                React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M15 13a3 3 0 11-6 0 3 3 0 016 0z" })),
-                            "Activar c\u00E1mara y registrar rostro"),
-                        React.createElement("button", { onClick: () => setStep('done'), className: "w-full py-2.5 rounded-lg border border-[#1e2d4a] text-slate-400 hover:text-white text-sm transition-colors" }, "Omitir por ahora"))))),
+                    React.createElement("button", { type: "submit", disabled: loading, className: "w-full py-3 rounded-lg bg-[#3b7eff] hover:bg-[#5a94ff] disabled:opacity-60 text-white font-medium transition-colors mt-2" }, loading ? 'Creando cuenta...' : 'Continuar y registrar rostro')))),
             React.createElement("p", { className: "text-center text-slate-500 text-sm mt-5" },
                 "\u00BFYa tienes cuenta?",
                 ' ',
